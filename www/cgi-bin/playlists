@@ -1,0 +1,11 @@
+#!/bin/sh
+#wget -q -O - http://www.internet-radio.com/stations/80s/ | grep pls | grep FLA | grep "http://.*.pls" | awk -F"title=" '{print $2}' | awk -F"&amp;website=" '{print $1}' >/tmp/stations
+wget -q -O - $1 | grep pls | grep FLA | grep "http://.*.pls" | awk -F"title=" '{print $2}' | awk -F"&amp;website=" '{print $1}' >/tmp/stations
+#wget -q -O - http://www.internet-radio.com/stations/80s/ | grep pls | grep FLA | grep "http://.*.pls" | awk -F"mount=" '{print $2}' | awk -F"&amp" '{print $1}' >/tmp/links
+wget -q -O - $1 | grep pls | grep FLA | grep "http://.*.pls" | awk -F"mount=" '{print $2}' | awk -F"&amp" '{print $1}' >/tmp/links
+nr=`wc -l < /tmp/stations`
+
+for i in `seq $nr`
+do
+  echo "<a href=`awk 'NR=='$i'{print;exit}' /tmp/links`>`awk 'NR=='$i'{print;exit}' /tmp/stations`</a>"
+done

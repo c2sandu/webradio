@@ -1,0 +1,25 @@
+
+config wifi-device 'radio0'
+	option type 'mac80211'
+	option channel '11'
+	option hwmode '11g'
+	option path 'platform/ar933x_wmac'
+	option htmode 'HT20'
+
+config wifi-iface
+	option device 'radio0'
+	option network 'lan'
+	option mode 'ap'
+	option ssid 'webradio'
+	option encryption 'psk2'
+	option key 'zesecret'
+	option disabled '0'
+
+config wifi-iface
+	option device 'radio0'
+	option network 'wan'
+	option mode 'sta'
+	option encryption 'psk2'
+	option ssid 'Your_SSID_at_home'
+	option key 'zedarkestsecret'
+

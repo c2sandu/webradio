@@ -1,0 +1,17 @@
+#!/bin/sh
+
+while true ;
+do 
+if ps | grep gst-launch | grep -v grep > /dev/null
+then
+    echo "Running"
+else
+ index=`cat /www/index`
+ name=`awk "NR == $index" /www/radio | cut -f1 -d"|"`
+ url=`awk "NR == $index" /www/radio | cut -f2 -d"|"`
+ alsactl -f /etc/alsa0.state nrestore
+ gst-launch -t playbin uri=$url | awk /title:/ | tee /tmp/title &
+ logger "Radio restarted by restart_radio"
+fi
+sleep 20;
+done

@@ -1,0 +1,13 @@
+# Put your custom commands here that should be executed once
+# the system init finished. By default this file does nothing.
+mount -t vfat /dev/sda1 /mnt/sda1
+sleep 5
+index=`cat /www/index`
+name=`awk "NR == $index" /www/radio | cut -f1 -d"|"`
+url=`awk "NR == $index" /www/radio | cut -f2 -d"|"`
+alsactl -f /etc/alsa0.state nrestore
+gst-launch -t playbin uri=$url | awk /title:/ | tee /tmp/title &
+/etc/init.d/restart_radio &
+
+route add -net 224.0.0.0/4 eth0
+exit 0

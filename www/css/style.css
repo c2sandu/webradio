@@ -1,0 +1,16 @@
+body {
+	background-color: #f6f6f6;
+	font-family: Arial, Geneva,Helvetica, sans-serif;
+	font-size: 100%;
+	width: 100%;
+}
+.wrap{
+	margin:0 auto;
+	width:80%;
+}
+.btm_border{
+	border-bottom: 4px solid  rgba(12, 12, 12, 0.1);
+}
+.header{
+	padding:2% 4%;
+}

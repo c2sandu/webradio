@@ -1,0 +1,52 @@
+
+config system
+	option hostname 'webradio'
+	option timezone 'EET-2EEST,M3.5.0/3,M10.5.0/4'
+
+config timeserver 'ntp'
+	list server '0.openwrt.pool.ntp.org'
+	list server '1.openwrt.pool.ntp.org'
+	list server '2.openwrt.pool.ntp.org'
+	list server '3.openwrt.pool.ntp.org'
+	option enabled '1'
+	option enable_server '0'
+
+config led 'led_usb'
+	option name 'USB'
+	option sysfs 'tp-link:green:3g'
+	option trigger 'usbdev'
+	option dev '1-1'
+	option interval '50'
+
+config led 'led_wlan'
+	option name 'WLAN'
+	option sysfs 'tp-link:green:wlan'
+	option trigger 'phy0tpt'
+
+config led 'led_lan'
+	option name 'LAN'
+	option sysfs 'tp-link:green:lan'
+	option trigger 'netdev'
+	option dev 'eth0'
+	option mode 'link tx rx'
+
+config button
+	option button 'wps'
+	option action 'released'
+	option min '1'
+	option max '6'
+	option handler 'wget http://127.0.0.1/cgi-bin/mute.cgi'
+
+config button
+	option button 'wps'
+	option action 'released'
+	option min '0'
+	option max '1'
+	option handler 'wget http://127.0.0.1/cgi-bin/next.cgi'
+
+config button
+	option button 'wps'
+	option action 'released'
+	option min '6'
+	option max '10'
+	option handler 'reboot'
