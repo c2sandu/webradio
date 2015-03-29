@@ -54,26 +54,27 @@ echo $url
 echo "'><h3 class='header'><center><span id='radio'>"
 /usr/bin/awk "NR == `cat /www/index`" /www/radio | cut -f1 -d"|" 
 echo "</span>"
-echo "<BR><span>&#x266B; </span><span id='song'>$song</span><span> &#x266B;</span>"
+echo "<BR><span style='color:red'>&#x266B; </span><span id='song'>$song</span><span style='color:red'> &#x266B;</span>"
 echo "</center></h3></a>"
 
 
 /bin/cat << EOM
 <table align="center" style="margin: 0px auto;">
 <tr>
-<td><a href="./mute.cgi" alt="Mute"><img src="../images/mute.png" border="0"></a></td>
-<td><a href="./volume_up.cgi" alt="Volume up"><img src="../images/volume_up.png" border="0"></a></td>
-<td><a href="./volume_down.cgi" alt="Volume down"><img src="../images/volume_down.png" border="0"></a></td>
+<td><a href="./mute.cgi"><img src="../images/mute.png" border="0" alt="Mute"></a></td>
+<td><a href="./volume_up.cgi"><img src="../images/volume_up.png" border="0" alt="Volume up"></a></td>
+<td><a href="./volume_down.cgi"><img src="../images/volume_down.png" border="0" alt="Volume down"></a></td>
 </tr>
 <tr>
-<td><a href="./previous.cgi" alt="Previous radio station"><img src="../images/previous.png" border="0"></a></td>
-<td><a href="./play_pause.cgi" alt="Play/Pause"><img src="../images/play_pause.png" border="0"></a></td>
-<td><a href="./next.cgi" alt="Next radio station"><img src="../images/next.png" border="0"></a></td>
+<td><a href="./previous.cgi"><img src="../images/previous.png" border="0" alt="Previous radio station"></a></td>
+<td><a href="./play_pause.cgi"><img src="../images/play_pause.png" border="0" alt="Play/Pause"></a></td>
+<td><a href="./next.cgi"><img src="../images/next.png" border="0" alt="Next radio station"></a></td>
 </tr>
 <tr>
-<td align="center"><a href="./first.cgi" alt="Go to the first radio on the list"><<</a></td>
+<td align="center"><a href="./first.cgi" alt="Go to the first radio on the list" style="font-size:400%"><<</a></td>
 <td></td>
-<td align="center"><a href="./last.cgi" alt="Go to the last radio on the list">>></a></td>
+<td align="center"><a href="./last.cgi" alt="Go to the last radio on the list" style="font-size:400%">>></a></td>
+</tr>
 </table>
 <a href="../add.html");">Add a new radio to list</a> <BR>
 <a href="./remove.cgi" onclick="if (!confirm('Are you sure you want to remove the current radio from the list?')) return false;">Remove this radio from list</a><BR>
