@@ -19,4 +19,7 @@ Software requirements:
 - gstreamer, gstreamer-utils and plugins
 - packages needed for the USB sound card (see http://wiki.openwrt.org/doc/howto/usb.audio)
 
+Homepage:
+https://yunofun.wordpress.com/yet-another-internet-radio-box/
+
 Enjoy :)
