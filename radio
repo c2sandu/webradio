@@ -1,0 +1,160 @@
+#!/bin/sh
+
+read -p "This installation will overwrite existing files in the /www directory and subfolders. Are you sure you want to continue (y/n)?" choice
+case "$choice" in 
+  y|Y ) 
+   ;;
+  n|N ) return 1;;
+  * ) 
+   echo "invalid choice, assume no"; return 1
+   ;;
+esac
+
+if `wget -sq http://www.google.ro/index.html`;then is_online=1; else is_online=0; fi
+if [ $is_online == 0 ]; then
+ echo "This box is not connected to the Internet. Script will now quit"$'\n'Connect your browser to http://<ipofthisbox> or modify manually the config files in /etc/config to connect to the Internet.
+ return 1
+fi
+
+echo -n "Updating packages..."
+opkg update > /dev/null 2>&1
+if [ ! $? == 0 ]; then echo $'\n'"There was a problem executing opkg update. Script will now exit.";return 1;else echo ' Done!';fi
+
+if mount | grep -q '/dev/sda3 on /'; then is_extroot=1; else is_extroot=0;fi
+
+if [ ! $is_extroot == 1 ]; then 
+ echo "This box does not have a working extroot filesystem. Script will now quit."
+ return 1
+fi
+
+if `cat /etc/banner | grep -q CHAOS`; then
+ echo -n "OpenWrt CHAOS CALMER release detected, installing prerequisites..."
+ opkg install curl kmod-usb-audio kmod-sound-core alsa-utils gstreamer1 gstreamer1-utils gstreamer1-plugins-base gst1-plugins-good gst1-libav > /dev/null 2>&1
+else
+ echo -n "BARRIER BREAKER or earlier release detected, installing prerequisites..."
+ opkg install curl kmod-usb-audio kmod-sound-core alsa-utils gstreamer gstreamer-utils gst-plugins-base gst-plugins-good gst-plugins-ugly gst-mod-faad gst-mod-souphttpsrc > /dev/null 2>&1
+fi
+if [ ! $? == 0 ]; then echo "There was a problem installing the prerequisites. Script will now exit.";return 1;else echo " Done!";fi
+
+echo -n "Downloading web interface of the radio from Github..."
+curl -ksf https://raw.githubusercontent.com/c2sandu/webradio/master/radio.tar.gz -o /tmp/radio.tar.gz
+if [ ! $? == 0 ]; then echo "There was a problem downloading the archive from Github. Script will now exit.";return 1;
+else
+ echo " Done!";
+ echo -n "Decompressing web interface to /www..."
+ tar zxvf /tmp/radio.tar.gz -C /www > /dev/null 2>&1
+ if [ ! $? == 0 ]; then echo $'\n'"There was a problem decompressing the archive. Script will now exit.";return 1;else echo ' Done!';fi
+fi
+
+read -p "Do you want to start the web radio now (y/n)?" choice
+case "$choice" in 
+  y|Y ) 
+   if `cat /etc/banner | grep -q CHAOS`; then
+    killall gst-launch-1.0 > /dev/null 2>&1
+    index=`cat /www/index`
+    url=`awk "NR == $index" /www/radio | cut -f2 -d"|"`
+    gst-launch-1.0 -t playbin uri=$url | awk /title:/ | tee /tmp/title > /dev/null 2>&1 &
+   else
+    killall gst-launch-0.10 > /dev/null 2>&1
+    index=`cat /www/index`
+    url=`awk "NR == $index" /www/radio | cut -f2 -d"|"`
+    gst-launch -t playbin uri=$url | awk /title:/ | tee /tmp/title > /dev/null 2>&1 &
+   fi
+   ;;
+  n|N ) ;;
+  * ) echo "invalid choice, assume no";;
+esac
+
+if ! `cat /etc/rc.local | grep -q gst-launch`; then 
+ read -p "Do you want to start the web radio automatically at router startup (y/n)?" choice
+ case "$choice" in 
+  y|Y ) 
+   if `cat /etc/banner | grep -q CHAOS`; then
+    sed -i  '/exit 0/d' /etc/rc.local
+    echo 'index=`cat /www/index`' >> /etc/rc.local
+    echo 'name=`awk "NR == $index" /www/radio | cut -f1 -d"|"`' >> /etc/rc.local
+    echo 'url=`awk "NR == $index" /www/radio | cut -f2 -d"|"`' >> /etc/rc.local
+    echo 'alsactl -f /etc/alsa0.state nrestore' >> /etc/rc.local
+    echo 'gst-launch-1.0 -t playbin uri=$url | awk /title:/ | tee /tmp/title &' >> /etc/rc.local
+    #echo '/etc/init.d/restart_radio &' >> /etc/rc.local
+    echo 'exit 0' >> /etc/rc.local
+   else
+    sed -i  '/exit 0/d' /etc/rc.local
+    echo 'index=`cat /www/index`' >> /etc/rc.local
+    echo 'name=`awk "NR == $index" /www/radio | cut -f1 -d"|"`' >> /etc/rc.local
+    echo 'url=`awk "NR == $index" /www/radio | cut -f2 -d"|"`' >> /etc/rc.local
+    echo 'alsactl -f /etc/alsa0.state nrestore' >> /etc/rc.local
+    echo 'gst-launch -t playbin uri=$url | awk /title:/ | tee /tmp/title &' >> /etc/rc.local
+    #echo '/etc/init.d/restart_radio &' >> /etc/rc.local
+    echo 'exit 0' >> /etc/rc.local
+   fi
+   ;;
+  n|N ) ;;
+  * ) echo "Invalid choice, assuming negative answer";;
+ esac
+fi
+
+read -p "Do you want to restart the web radio if streaming stops for some reasons (temporary network problems, problems with the stream, etc)?"$'\n'"Use this option only if this box is dedicated for Internet radio. (y/n)?" choice
+case "$choice" in 
+  y|Y ) 
+   if `cat /etc/banner | grep -q CHAOS`; then
+##### CHAOS CALMER
+cat <<EOM > /etc/init.d/restart_radio
+#!/bin/sh
+
+while true ;
+do 
+if ps | grep gst-launch | grep -v grep > /dev/null
+then
+    echo "Running"
+else
+ index=\`cat /www/index\`
+ name=\`awk "NR == $index" /www/radio | cut -f1 -d"|"\`
+ url=\`awk "NR == $index" /www/radio | cut -f2 -d"|"\`
+ alsactl -f /etc/alsa0.state nrestore
+ gst-launch-1.0 -t playbin uri=$url | awk /title:/ | tee /tmp/title &
+ logger "Radio restarted by restart_radio"
+fi
+sleep 20;
+done
+EOM
+#####
+   else
+##### BarrierBreaker
+cat <<EOM > /etc/init.d/restart_radio
+#!/bin/sh
+
+while true ;
+do 
+if ps | grep gst-launch | grep -v grep > /dev/null
+then
+    echo "Running"
+else
+ index=\`cat /www/index\`
+ name=\`awk "NR == $index" /www/radio | cut -f1 -d"|"\`
+ url=\`awk "NR == $index" /www/radio | cut -f2 -d"|"\`
+ alsactl -f /etc/alsa0.state nrestore
+ gst-launch -t playbin uri=$url | awk /title:/ | tee /tmp/title &
+ logger "Radio restarted by restart_radio"
+fi
+sleep 20;
+done
+EOM
+#####
+   fi
+   chmod +x /etc/init.d/restart_radio; /etc/init.d/restart_radio > /dev/null 2>&1 &
+   sed -i  '/exit 0/d' /etc/rc.local
+   echo '/etc/init.d/restart_radio &' >> /etc/rc.local
+   echo 'exit 0' >> /etc/rc.local
+   ;;
+  n|N ) 
+    rm /etc/init.d/restart_radio > /dev/null 2>&1; killall restart_radio > /dev/null 2>&1 
+    ;;
+  * ) 
+    echo "invalid choice, assume no"
+    rm /etc/init.d/restart_radio > /dev/null 2>&1; killall restart_radio > /dev/null 2>&1 
+    ;;
+esac
+
+
+echo "Done! You can now access the web interface of the radio at http://<ipofthisbox>/radio.html"
