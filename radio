@@ -1,6 +1,35 @@
 #!/bin/sh
 
-read -p "This installation will overwrite existing files in the /www directory and subfolders. Are you sure you want to continue (y/n)?" choice
+echo
+echo -e "\e[1;95m Welcome to Yet Another Internet Radio installer
+ -----------------------------------------------
+\e[0;37m"
+
+echo -n "Checking if audio hardware is installed..."
+
+#check if audio hardware is installed. Works only in CC (in BB a restart is needed after installing audio packages)
+if ! `cat /etc/banner | grep -q BARRIER`; then
+ if ! `ls /dev | grep -q -e audio -e dsp -e mixer`; then 
+ is_audio=0
+ echo
+ echo -en "\e[1;95mSoundcard was not detected.\e[0;37m"
+ read -p $'\n'"The installer can still copy the required files and install needed packages, but the radio will not work unless audio hardware is installed."$'\n'"Do you want to continue (y/n)?" choice
+ case "$choice" in 
+  y|Y ) 
+   ;;
+  n|N ) return 1;;
+  * ) 
+   echo "invalid choice, assume no"; return 1
+   ;;
+ esac
+ else is_audio=1;
+ fi
+ echo  Done!
+else echo " BarrierBreaker detected, skipping this step."
+fi
+
+echo -en "\e[1;95mThis installation will overwrite existing files in the /www directory and subfolders.\e[0;37m"
+read -p "Are you sure you want to continue (y/n)?" choice
 case "$choice" in 
   y|Y ) 
    ;;
@@ -12,7 +41,8 @@ esac
 
 if `wget -sq http://www.google.ro/index.html`;then is_online=1; else is_online=0; fi
 if [ $is_online == 0 ]; then
- echo "This box is not connected to the Internet. Script will now quit"$'\n'Connect your browser to http://<ipofthisbox> or modify manually the config files in /etc/config to connect to the Internet.
+ echo -en "\e[1;95mThis box is not connected to the Internet. \e[0;37m"
+ echo "Script will now quit"$'\n'"Connect your browser to http://<ipofthisbox> or modify manually the config files in /etc/config to connect to the Internet."
  return 1
 fi
 
@@ -20,10 +50,12 @@ echo -n "Updating packages..."
 opkg update > /dev/null 2>&1
 if [ ! $? == 0 ]; then echo $'\n'"There was a problem executing opkg update. Script will now exit.";return 1;else echo ' Done!';fi
 
-if mount | grep -q '/dev/sda3 on /'; then is_extroot=1; else is_extroot=0;fi
+num=`df | grep rootfs | awk '{print $4}'`
+if [ "$num" -gt "50000" ]; then is_extroot=1;else is_extroot=0;fi
 
 if [ ! $is_extroot == 1 ]; then 
- echo "This box does not have a working extroot filesystem. Script will now quit."
+ echo -en "\e[1;95mThis box does not have a working extroot filesystem. \e[0;37m"
+ echo "Script will now quit."
  return 1
 fi
 
@@ -46,8 +78,9 @@ else
  if [ ! $? == 0 ]; then echo $'\n'"There was a problem decompressing the archive. Script will now exit.";return 1;else echo ' Done!';fi
 fi
 
-read -p "Do you want to start the web radio now (y/n)?" choice
-case "$choice" in 
+if [ "$is_audio" == "1" ]; then 
+ read -p "Do you want to start the web radio now (y/n)?" choice
+ case "$choice" in 
   y|Y ) 
    if `cat /etc/banner | grep -q CHAOS`; then
     killall gst-launch-1.0 > /dev/null 2>&1
@@ -63,13 +96,13 @@ case "$choice" in
    ;;
   n|N ) ;;
   * ) echo "invalid choice, assume no";;
-esac
+ esac
+fi
 
 if ! `cat /etc/rc.local | grep -q gst-launch`; then 
  read -p "Do you want to start the web radio automatically at router startup (y/n)?" choice
  case "$choice" in 
   y|Y ) 
-   if `cat /etc/banner | grep -q CHAOS`; then
     sed -i  '/exit 0/d' /etc/rc.local
     echo 'index=`cat /www/index`' >> /etc/rc.local
     echo 'name=`awk "NR == $index" /www/radio | cut -f1 -d"|"`' >> /etc/rc.local
@@ -78,16 +111,6 @@ if ! `cat /etc/rc.local | grep -q gst-launch`; then
     echo 'gst-launch-1.0 -t playbin uri=$url | awk /title:/ | tee /tmp/title &' >> /etc/rc.local
     #echo '/etc/init.d/restart_radio &' >> /etc/rc.local
     echo 'exit 0' >> /etc/rc.local
-   else
-    sed -i  '/exit 0/d' /etc/rc.local
-    echo 'index=`cat /www/index`' >> /etc/rc.local
-    echo 'name=`awk "NR == $index" /www/radio | cut -f1 -d"|"`' >> /etc/rc.local
-    echo 'url=`awk "NR == $index" /www/radio | cut -f2 -d"|"`' >> /etc/rc.local
-    echo 'alsactl -f /etc/alsa0.state nrestore' >> /etc/rc.local
-    echo 'gst-launch -t playbin uri=$url | awk /title:/ | tee /tmp/title &' >> /etc/rc.local
-    #echo '/etc/init.d/restart_radio &' >> /etc/rc.local
-    echo 'exit 0' >> /etc/rc.local
-   fi
    ;;
   n|N ) ;;
   * ) echo "Invalid choice, assuming negative answer";;
@@ -97,8 +120,6 @@ fi
 read -p "Do you want to restart the web radio if streaming stops for some reasons (temporary network problems, problems with the stream, etc)?"$'\n'"Use this option only if this box is dedicated for Internet radio. (y/n)?" choice
 case "$choice" in 
   y|Y ) 
-   if `cat /etc/banner | grep -q CHAOS`; then
-##### CHAOS CALMER
 cat <<EOM > /etc/init.d/restart_radio
 #!/bin/sh
 
@@ -109,42 +130,23 @@ then
     echo "Running"
 else
  index=\`cat /www/index\`
- name=\`awk "NR == $index" /www/radio | cut -f1 -d"|"\`
- url=\`awk "NR == $index" /www/radio | cut -f2 -d"|"\`
+ name=\`awk "NR == \$index" /www/radio | cut -f1 -d"|"\`
+ url=\`awk "NR == \$index" /www/radio | cut -f2 -d"|"\`
  alsactl -f /etc/alsa0.state nrestore
- gst-launch-1.0 -t playbin uri=$url | awk /title:/ | tee /tmp/title &
+ gst-launch-1.0 -t playbin uri=\$url | awk /title:/ | tee /tmp/title &
  logger "Radio restarted by restart_radio"
 fi
 sleep 20;
 done
 EOM
-#####
-   else
-##### BarrierBreaker
-cat <<EOM > /etc/init.d/restart_radio
-#!/bin/sh
-
-while true ;
-do 
-if ps | grep gst-launch | grep -v grep > /dev/null
-then
-    echo "Running"
-else
- index=\`cat /www/index\`
- name=\`awk "NR == $index" /www/radio | cut -f1 -d"|"\`
- url=\`awk "NR == $index" /www/radio | cut -f2 -d"|"\`
- alsactl -f /etc/alsa0.state nrestore
- gst-launch -t playbin uri=$url | awk /title:/ | tee /tmp/title &
- logger "Radio restarted by restart_radio"
-fi
-sleep 20;
-done
-EOM
-#####
+   if `cat /etc/banner | grep -q BARRIER`; then
+	sed -i 's/gst-launch-1.0/gst-launch-0.10/g' /etc/init.d/restart_radio
    fi
    chmod +x /etc/init.d/restart_radio; /etc/init.d/restart_radio > /dev/null 2>&1 &
    sed -i  '/exit 0/d' /etc/rc.local
-   echo '/etc/init.d/restart_radio &' >> /etc/rc.local
+   if ! `cat /etc/rc.local | grep -q restart_radio`; then 
+    echo '/etc/init.d/restart_radio &' >> /etc/rc.local
+   fi
    echo 'exit 0' >> /etc/rc.local
    ;;
   n|N ) 
@@ -156,5 +158,18 @@ EOM
     ;;
 esac
 
+if `cat /etc/banner | grep -q BARRIER`; then
+ sed -i 's/gst-launch-1.0/gst-launch-0.10/g' /www/cgi-bin/first.cgi
+ sed -i 's/gst-launch-1.0/gst-launch-0.10/g' /www/cgi-bin/last.cgi
+ sed -i 's/gst-launch-1.0/gst-launch-0.10/g' /www/cgi-bin/next.cgi
+ sed -i 's/gst-launch-1.0/gst-launch-0.10/g' /www/cgi-bin/previous.cgi
+ sed -i 's/gst-launch-1.0/gst-launch-0.10/g' /www/cgi-bin/goto.cgi
+ sed -i 's/gst-launch-1.0/gst-launch-0.10/g' /etc/rc.local
+fi
 
-echo "Done! You can now access the web interface of the radio at http://<ipofthisbox>/radio.html"
+echo -en "\e[1;95mDone! \e[0;37m"
+echo -n "You can now access the web interface of the radio at "
+echo -e "\e[1;95mhttp://<ipofthisbox>/radio.html\e[0;37m"
+if `cat /etc/banner | grep -q BARRIER`; then
+ echo "A reboot is needed for the audio hardware to work (Barrier Breaker)."
+fi
